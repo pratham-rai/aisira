@@ -1,9 +1,77 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, ActivityIndicator, TouchableOpacity, Linking } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { theme } from '../../theme';
 import client from '../api/client';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
+
+// Helper to generate the exact Leaflet HTML for a single location map matching the website custom pin
+function getDetailMapHTML(event) {
+  const lat = parseFloat(event.latitude);
+  const lng = parseFloat(event.longitude);
+  const title = event.prasanga || '';
+  const loc = event.location || '';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html, #map {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0D0505;
+    }
+    .leaflet-control-attribution {
+      display: none !important;
+    }
+    .custom-pin {
+      background: linear-gradient(135deg, #E8751A, #F4A623);
+      width: 32px;
+      height: 32px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(232, 117, 26, 0.4);
+    }
+    .custom-pin img {
+      width: 16px;
+      height: 16px;
+      transform: rotate(45deg);
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map', { zoomControl: false }).setView([${lat}, ${lng}], 14);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18
+    }).addTo(map);
+
+    var customIcon = L.divIcon({
+      html: '<div class="custom-pin"><img src="https://raw.githubusercontent.com/pratham-rai/aisira/main/public/logo.png" /></div>',
+      iconSize: [32, 32], iconAnchor: [16, 32], className: ''
+    });
+
+    var marker = L.marker([${lat}, ${lng}], { icon: customIcon }).addTo(map);
+    marker.bindPopup("<div style='font-family:sans-serif;color:#333;font-size:12px;'><strong>" + ${JSON.stringify(title)} + "</strong><br/>" + ${JSON.stringify(loc)} + "</div>").openPopup();
+  </script>
+</body>
+</html>
+  `;
+}
 
 export default function EventDetailScreen({ route, navigation }) {
   const { id } = route.params;
@@ -30,6 +98,8 @@ export default function EventDetailScreen({ route, navigation }) {
   const openMap = () => {
     if (event.googleMapsLink) {
       Linking.openURL(event.googleMapsLink);
+    } else if (event.latitude && event.longitude) {
+      Linking.openURL(`https://www.google.com/maps?q=${event.latitude},${event.longitude}`);
     }
   };
 
@@ -61,7 +131,7 @@ export default function EventDetailScreen({ route, navigation }) {
   const imageUrl = event.posterUrls && event.posterUrls.length > 0 ? event.posterUrls[0] : null;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scroll}>
       {imageUrl ? (
         <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="cover" />
       ) : (
@@ -90,7 +160,7 @@ export default function EventDetailScreen({ route, navigation }) {
           <Text style={styles.metaText}>{event.views || 0} views</Text>
         </View>
 
-        {event.googleMapsLink && (
+        {(event.googleMapsLink || (event.latitude && event.longitude)) && (
           <Button 
             title="Open in Maps" 
             variant="secondary" 
@@ -104,6 +174,23 @@ export default function EventDetailScreen({ route, navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About this Event</Text>
           <Text style={styles.description}>{event.description}</Text>
+        </View>
+      )}
+
+      {/* Leaflet Map Section - exact website single marker parity */}
+      {event.latitude && event.longitude && (
+        <View style={styles.mapSection}>
+          <Text style={styles.sectionTitle}>🗺️ Location Map</Text>
+          <View style={styles.mapFrame}>
+            <WebView
+              originWhitelist={['*']}
+              source={{ html: getDetailMapHTML(event) }}
+              style={styles.webViewMap}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              scrollEnabled={false}
+            />
+          </View>
         </View>
       )}
 
@@ -208,6 +295,23 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontSize: 16,
     lineHeight: 24,
+  },
+  mapSection: {
+    padding: 16,
+    paddingTop: 0,
+    marginBottom: 8,
+  },
+  mapFrame: {
+    height: 220,
+    borderRadius: theme.radius.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.md,
+  },
+  webViewMap: {
+    flex: 1,
+    backgroundColor: '#0D0505',
   },
   contactCard: {
     margin: 16,
