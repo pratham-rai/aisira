@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, withSequence } from 'react-native-reanimated';
 import { theme } from '../../theme';
 
@@ -12,24 +12,24 @@ export default function BackgroundOrbs({ children }) {
   useEffect(() => {
     drift1.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 10000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 10000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1, { duration: 20000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 20000, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
     );
     drift2.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 12000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 12000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1, { duration: 24000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 24000, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
     );
     drift3.value = withRepeat(
       withSequence(
-        withTiming(1, { duration: 15000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 15000, easing: Easing.inOut(Easing.ease) })
+        withTiming(1, { duration: 28000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0, { duration: 28000, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
@@ -38,29 +38,46 @@ export default function BackgroundOrbs({ children }) {
 
   const orb1Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: drift1.value * 50 },
-      { translateY: drift1.value * -50 }
+      { translateX: drift1.value * 60 },
+      { translateY: drift1.value * -60 }
     ]
   }));
   const orb2Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: drift2.value * -40 },
-      { translateY: drift2.value * 60 }
+      { translateX: drift2.value * -50 },
+      { translateY: drift2.value * 70 }
     ]
   }));
   const orb3Style = useAnimatedStyle(() => ({
     transform: [
-      { translateX: drift3.value * 60 },
-      { translateY: drift3.value * 30 }
+      { translateX: drift3.value * 70 },
+      { translateY: drift3.value * 40 }
     ]
   }));
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.orb, styles.orb1, orb1Style]} />
-      <Animated.View style={[styles.orb, styles.orb2, orb2Style]} />
-      <Animated.View style={[styles.orb, styles.orb3, orb3Style]} />
-      {/* Grid overlay could go here using an image or SVG, but keeping it clean for performance */}
+      {/* Drifting Radial Glowing Orbs */}
+      <Animated.Image 
+        source={require('../../assets/images/blurred-orb.png')} 
+        style={[styles.orb, styles.orb1, orb1Style]} 
+      />
+      <Animated.Image 
+        source={require('../../assets/images/blurred-orb.png')} 
+        style={[styles.orb, styles.orb2, orb2Style]} 
+      />
+      <Animated.Image 
+        source={require('../../assets/images/blurred-orb.png')} 
+        style={[styles.orb, styles.orb3, orb3Style]} 
+      />
+      
+      {/* High-Fidelity Grid Mesh Overlay */}
+      <Image 
+        source={require('../../assets/images/grid-tile.png')} 
+        style={styles.gridOverlay} 
+        resizeMode="repeat"
+      />
+
       {children}
     </View>
   );
@@ -73,30 +90,35 @@ const styles = StyleSheet.create({
   },
   orb: {
     position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.15,
+    opacity: 0.12, // soft blended opacity matching web exactly
   },
   orb1: {
-    width: 400,
-    height: 400,
-    backgroundColor: theme.colors.accent,
+    width: 500,
+    height: 500,
+    tintColor: theme.colors.accent,
     top: -100,
     right: -100,
-    // Note: React Native View doesn't support massive blur naturally without Expo Image/BlurView,
-    // so we rely on low opacity and soft colors to mimic it on generic backgrounds.
   },
   orb2: {
-    width: 300,
-    height: 300,
-    backgroundColor: theme.colors.red,
-    bottom: -50,
-    left: -50,
+    width: 400,
+    height: 400,
+    tintColor: theme.colors.red,
+    bottom: -100,
+    left: -100,
   },
   orb3: {
-    width: 250,
-    height: 250,
-    backgroundColor: theme.colors.blue,
+    width: 300,
+    height: 300,
+    tintColor: theme.colors.blue,
     top: '40%',
-    left: '20%',
+    left: '30%',
+  },
+  gridOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.3,
   }
 });
