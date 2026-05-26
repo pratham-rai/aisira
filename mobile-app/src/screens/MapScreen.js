@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TextInput, ScrollView, TouchableOpacity, Image } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { theme } from '../../theme';
 import client from '../api/client';
 import GlassCard from '../components/GlassCard';
@@ -37,6 +36,149 @@ function isThisMonth(dateStr) {
   return d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear() && d >= today;
 }
 
+const leafletHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body, html, #map {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #0D0505;
+    }
+    .leaflet-control-attribution {
+      display: none !important;
+    }
+    /* Teardrop Leaflet Marker custom style */
+    .custom-pin {
+      background: linear-gradient(135deg, #E8751A, #F4A623);
+      width: 32px;
+      height: 32px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(232, 117, 26, 0.4);
+    }
+    .custom-pin img {
+      width: 16px;
+      height: 16px;
+      transform: rotate(45deg);
+      object-fit: contain;
+    }
+    .custom-pin-multi {
+      position: relative;
+      background: linear-gradient(135deg, #E8751A, #F4A623);
+      width: 32px;
+      height: 32px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 10px rgba(232, 117, 26, 0.6);
+    }
+    .custom-pin-multi img {
+      width: 16px;
+      height: 16px;
+      transform: rotate(45deg);
+      object-fit: contain;
+    }
+    .custom-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: #EF4444;
+      color: white;
+      font-size: 10px;
+      font-weight: 800;
+      border-radius: 10px;
+      padding: 1px 5px;
+      border: 1.5px solid white;
+      transform: rotate(45deg);
+      transform-origin: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+      line-height: 1.2;
+      min-width: 16px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    var map = L.map('map', { zoomControl: false }).setView([13.2, 74.9], 9);
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    var markersLayer = L.layerGroup().addTo(map);
+
+    var standardIcon = L.divIcon({
+      html: '<div class="custom-pin"><img src="https://raw.githubusercontent.com/pratham-rai/aisira/main/public/logo.png" /></div>',
+      iconSize: [32, 32], iconAnchor: [16, 32], className: ''
+    });
+
+    function sendToRN(type, payload) {
+      if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: type, payload: payload }));
+      }
+    }
+
+    map.on('click', function() {
+      sendToRN('MAP_CLICK', {});
+    });
+
+    function updateMarkers(groupsJson) {
+      markersLayer.clearLayers();
+      var groups = JSON.parse(groupsJson);
+      var points = [];
+
+      Object.keys(groups).forEach(function(key) {
+        var groupEvents = groups[key];
+        var firstEvent = groupEvents[0];
+        var lat = parseFloat(firstEvent.latitude);
+        var lng = parseFloat(firstEvent.longitude);
+        points.push([lat, lng]);
+
+        var count = groupEvents.length;
+        var icon;
+
+        if (count === 1) {
+          icon = standardIcon;
+        } else {
+          icon = L.divIcon({
+            html: '<div class="custom-pin-multi"><img src="https://raw.githubusercontent.com/pratham-rai/aisira/main/public/logo.png" /><div class="custom-badge">' + count + '</div></div>',
+            iconSize: [32, 32], iconAnchor: [16, 32], className: ''
+          });
+        }
+
+        var marker = L.marker([lat, lng], { icon: icon }).addTo(markersLayer);
+        marker.on('click', function(e) {
+          L.DomEvent.stopPropagation(e);
+          sendToRN('MARKER_CLICK', groupEvents);
+        });
+      });
+
+      if (points.length > 0) {
+        var bounds = L.latLngBounds(points);
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 });
+      }
+    }
+  </script>
+</body>
+</html>
+`;
+
 export default function MapScreen({ navigation }) {
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +186,9 @@ export default function MapScreen({ navigation }) {
   const [filterCategory, setFilterCategory] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [selectedGroup, setSelectedGroup] = useState(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+
+  const webViewRef = useRef(null);
 
   useEffect(() => {
     fetchEvents();
@@ -61,7 +206,6 @@ export default function MapScreen({ navigation }) {
   };
 
   const getFilteredEvents = () => {
-    // Filter by having valid coordinates and being upcoming
     let events = allEvents.filter(e => e.latitude && e.longitude && isUpcoming(e.endDate || e.date, e.time));
 
     // Search query filter
@@ -102,6 +246,30 @@ export default function MapScreen({ navigation }) {
     groups[key].push(event);
   });
 
+  // Inject updated markers whenever filteredEvents or mapLoaded changes
+  useEffect(() => {
+    if (mapLoaded && webViewRef.current) {
+      const groupsJson = JSON.stringify(groups);
+      const jsCode = `updateMarkers(${JSON.stringify(groupsJson)}); true;`;
+      webViewRef.current.injectJavaScript(jsCode);
+    }
+  }, [filteredEvents, mapLoaded]);
+
+  const handleMessage = (event) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'MAP_LOADED') {
+        setMapLoaded(true);
+      } else if (data.type === 'MARKER_CLICK') {
+        setSelectedGroup(data.payload);
+      } else if (data.type === 'MAP_CLICK') {
+        setSelectedGroup(null);
+      }
+    } catch (err) {
+      console.log('Error parsing WebView message:', err);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -110,60 +278,17 @@ export default function MapScreen({ navigation }) {
     );
   }
 
-  const handleMarkerPress = (group) => {
-    setSelectedGroup(group);
-  };
-
   return (
     <View style={styles.container}>
-      <MapView
+      <WebView
+        ref={webViewRef}
+        originWhitelist={['*']}
+        source={{ html: leafletHTML }}
         style={StyleSheet.absoluteFill}
-        initialRegion={{
-          latitude: 13.2000, // Matching standard web coordinates
-          longitude: 74.9000,
-          latitudeDelta: 1.0,
-          longitudeDelta: 1.0,
-        }}
-        userInterfaceStyle="dark"
-        onPress={() => setSelectedGroup(null)} // Click map to dismiss bottom details card
-      >
-        {Object.keys(groups).map(key => {
-          const groupEvents = groups[key];
-          const firstEvent = groupEvents[0];
-          const lat = parseFloat(firstEvent.latitude);
-          const lng = parseFloat(firstEvent.longitude);
-
-          return (
-            <Marker
-              key={key}
-              coordinate={{ latitude: lat, longitude: lng }}
-              onPress={(e) => {
-                e.stopPropagation();
-                handleMarkerPress(groupEvents);
-              }}
-            >
-              <View style={styles.markerPinContainer}>
-                <LinearGradient
-                  colors={['#E8751A', '#F4A623']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.markerPin}
-                >
-                  <Image 
-                    source={require('../../assets/images/icon.png')} 
-                    style={styles.markerLogo} 
-                  />
-                  {groupEvents.length > 1 && (
-                    <View style={styles.countBadge}>
-                      <Text style={styles.countBadgeText}>{groupEvents.length}</Text>
-                    </View>
-                  )}
-                </LinearGradient>
-              </View>
-            </Marker>
-          );
-        })}
-      </MapView>
+        onMessage={handleMessage}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+      />
 
       {/* Floating Header Overlay Search and Filters */}
       <View style={styles.overlayHeader}>
@@ -296,54 +421,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: theme.colors.bgDeep,
-  },
-  // Custom Saffron Pin styling 100% matching website Leaflet custom Icon
-  markerPinContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-  },
-  markerPin: {
-    width: 32,
-    height: 32,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
-    borderBottomLeftRadius: 0,
-    transform: [{ rotate: '-45deg' }],
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#E8751A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  markerLogo: {
-    width: 16,
-    height: 16,
-    resizeMode: 'contain',
-    transform: [{ rotate: '45deg' }],
-  },
-  countBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#EF4444',
-    borderWidth: 1.5,
-    borderColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    minWidth: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    transform: [{ rotate: '45deg' }],
-  },
-  countBadgeText: {
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: '800',
   },
   // Floating top headers
   overlayHeader: {
