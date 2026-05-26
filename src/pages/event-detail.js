@@ -311,7 +311,11 @@ export async function renderEventDetail(container, params) {
         if (!mapEl) return;
         const map = L.map(mapEl).setView([event.latitude, event.longitude], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-        L.marker([event.latitude, event.longitude]).addTo(map).bindPopup(`<strong>${event.prasanga}</strong><br>${event.location}`).openPopup();
+        const customIcon = L.divIcon({
+          html: '<div style="background:linear-gradient(135deg,#E8751A,#F4A623);width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(232,117,26,0.4)"><img src="/logo.png" style="width:16px;height:16px;transform:rotate(45deg);object-fit:contain" /></div>',
+          iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -32], className: '',
+        });
+        L.marker([event.latitude, event.longitude], { icon: customIcon }).addTo(map).bindPopup(`<strong>${event.prasanga}</strong><br>${event.location}`).openPopup();
         setTimeout(() => map.invalidateSize(), 200);
       }).catch(() => {});
     }, 100);
