@@ -150,7 +150,7 @@ export default function MapScreen({ navigation }) {
                   style={styles.markerPin}
                 >
                   <Image 
-                    source={require('../../assets/logo.png')} 
+                    source={require('../../assets/images/icon.png')} 
                     style={styles.markerLogo} 
                   />
                   {groupEvents.length > 1 && (
