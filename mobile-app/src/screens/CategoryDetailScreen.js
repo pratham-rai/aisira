@@ -77,7 +77,7 @@ export default function CategoryDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bgDeep,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,

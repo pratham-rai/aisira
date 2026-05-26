@@ -35,6 +35,7 @@ function HomeStack() {
       headerTransparent: true,
       headerTintColor: theme.colors.textPrimary,
       headerBackTitleVisible: false,
+      contentStyle: { backgroundColor: 'transparent' },
     }}>
       <Stack.Screen name="HomeMain" component={HomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event Details' }} />
@@ -56,6 +57,7 @@ export default function AppNavigator() {
           tabBarActiveTintColor: theme.colors.accent,
           tabBarInactiveTintColor: theme.colors.textMuted,
         }}
+        sceneContainerStyle={{ backgroundColor: 'transparent' }}
       >
         <Tab.Screen name="Home" component={HomeStack} options={{ headerShown: false, tabBarLabel: 'Events', tabBarIcon: () => <Text>🎭</Text> }} />
         <Tab.Screen name="Map" component={MapScreen} options={{ title: 'Map View', tabBarIcon: () => <Text>📍</Text> }} />

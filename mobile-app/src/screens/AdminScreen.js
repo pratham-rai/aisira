@@ -103,7 +103,7 @@ export default function AdminScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.bgDeep,
+    backgroundColor: 'transparent',
   },
   header: {
     fontSize: 24,
