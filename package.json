@@ -1,0 +1,26 @@
+{
+  "name": "aisira",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "start": "node backend/server.js",
+    "preview": "vite preview",
+    "mobile:sync": "npm run build && npx cap sync",
+    "mobile:open": "npx cap open android"
+  },
+  "devDependencies": {
+    "terser": "^5.47.1",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/cli": "^8.3.4",
+    "@capacitor/core": "^8.3.4",
+    "firebase": "^12.13.0",
+    "leaflet": "^1.9.4"
+  }
+}
