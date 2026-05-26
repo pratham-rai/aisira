@@ -1,4 +1,5 @@
-require('dotenv').config(); // Trigger build v2
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -65,7 +66,6 @@ app.get('/api/health', (req, res) => {
 
 
 // Serve static files from the frontend
-const path = require('path');
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // SPA Fallback: Serve index.html for any non-API routes
